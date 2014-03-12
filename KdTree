@@ -1,4 +1,3 @@
-
 public class KdTree {
 	private Node root;             // root of KdTree
 	private int N;
@@ -16,7 +15,214 @@ public class KdTree {
 		}
 
 	public KdTree() {                               // construct an empty set of points
+	   N = 0;public class KdTree {
+	private Node root;             // root of KdTree
+	private int N;
+	private static final double MIN = 0.0;
+	private static final double MAX = 1.0;
+	private static class Node {
+		   private Point2D p;      // the point
+		   private RectHV rect;    // the axis-aligned rectangle corresponding to this node
+		   private Node lb;        // the left/bottom subtree
+		   private Node rt;        // the right/top subtree
+		   public Node(Point2D p ){
+			   this.p = p;
+			   lb = null;
+			   rt = null;
+			   rect = new RectHV(MIN,MIN,MAX,MAX);
+		   }
+		}
+
+	public KdTree() {                               // construct an empty set of points
 	   N = 0;
+	   root = null;
+   }
+   public boolean isEmpty() {                        // is the set empty?
+	   return (size() == 0);
+   }
+   public int size() {                               // number of points in the set
+	   return N;
+   }
+
+   
+   public void insert(Point2D p) {                   // add the point p to the set (if it is not already in the set)
+      if (p == null) { return; }
+        root = put(root, p,0);
+   }
+   private Node put(Node x, Point2D p, int orientation ) {
+	   int cmp;
+       if (x == null) {
+        	   return new Node(p);
+       }
+       if ( orientation%2 == 0) {
+    	   cmp = Point2D.X_ORDER.compare(p,x.p);
+       }
+       else {
+    	   cmp = Point2D.Y_ORDER.compare(p,x.p);
+       }
+       if      (cmp < 0) { 
+    	   	x.lb  = put(x.lb,  p,orientation+1);
+            if ( orientation%2 == 0)
+         	   x.lb.rect = new RectHV(x.rect.xmin(),x.rect.ymin(),x.p.x(),x.rect.ymax());
+            else
+         	   x.lb.rect = new RectHV(x.rect.xmin(),x.rect.ymin(),x.rect.xmax(),x.p.y());
+       }
+       else if (cmp > 0) { 
+    	   x.rt = put(x.rt, p,orientation+1);
+           if ( orientation%2 == 0)
+        	   x.rt.rect = new RectHV(x.p.x(),x.rect.ymin(),x.rect.xmax(),x.rect.ymax());
+           else
+        	   x.rt.rect = new RectHV(x.rect.xmin(),x.p.y(),x.rect.xmax(),x.rect.ymax());
+       }
+       return x;
+   }
+
+   private Point2D get(Point2D p) {
+       return get(root, p,0);
+   }
+
+   private Point2D get(Node x, Point2D p,int orientation) {
+	   int cmp;
+       if (x == null) return null;
+       if ( orientation%2 == 0)
+    	   cmp = Point2D.X_ORDER.compare(p,x.p);
+       else
+    	   cmp = Point2D.Y_ORDER.compare(p,x.p);
+       if      (cmp < 0) return get(x.lb, p,orientation+1);
+       else if (cmp > 0) return get(x.rt, p,orientation+1);
+       else              return x.p;
+   }
+
+   public boolean contains(Point2D p) {             // does the set contain the point p?
+	   return get(p) != null;
+   }
+   public void draw() {                             // draw all of the points to standard draw
+	   StdDraw.clear();
+	   StdDraw.setPenColor(StdDraw.BLACK);
+       StdDraw.setPenRadius(.001);	   
+	   root.rect.draw();
+	   draw(root,0);
+   }
+   private void draw(Node x,int orientation) {                             // draw all of the points to standard draw
+	   if ( x== null) return; 
+	   StdDraw.setPenColor(StdDraw.BLACK);
+       StdDraw.setPenRadius(.01);	   
+	   x.p.draw();
+       StdDraw.setPenRadius(.001);	   
+	   if ( orientation%2 == 0) {
+		   	StdDraw.setPenColor(StdDraw.RED);
+	   		StdDraw.line(x.p.x(), x.rect.ymin(), x.p.x(), x.rect.ymax());
+	   }
+	   else {
+		   	StdDraw.setPenColor(StdDraw.BLUE);
+	   		StdDraw.line(x.rect.xmin(), x.p.y(), x.rect.xmax(), x.p.y());
+	   }
+	   draw(x.lb,orientation+1);
+	   draw(x.rt,orientation+1);
+   }
+   private void addPoints ( Node x, RectHV rect, Queue<Point2D> queue ) {
+	   Queue<Node> nq = new Queue<Node>();
+	   nq.enqueue(x);
+       while (!nq.isEmpty()) {
+           Node y = nq.dequeue();
+           if (y == null) continue;
+           if ( rect.contains(y.p)) {
+        	   queue.enqueue(y.p);
+           }
+           nq.enqueue(y.lb);
+           nq.enqueue(y.rt);
+       }
+   }
+   private void searchIntersect ( Node x, RectHV rect,Queue<Point2D> queue) {
+	   if ( x== null) return;  
+	   Queue<Node> nq = new Queue<Node>();
+	   nq.enqueue(x);
+       while (!nq.isEmpty()) {
+           Node y = nq.dequeue();
+           if (y == null) continue;
+           if ( rect.intersects(y.rect)) {
+        	   addPoints(y,rect,queue);
+           } else {
+           nq.enqueue(y.lb);
+           nq.enqueue(y.rt);
+           }
+       }
+	   
+	   
+   }
+   public Iterable<Point2D> range(RectHV rect) {     // all points in the set that are inside the rectangle
+	   Queue<Point2D> queue = new Queue<Point2D>();
+	   // traverse the tree from root
+//	   if (rect.contains(root.p))
+//		   queue.enqueue(root.p);
+	   searchIntersect(root,rect,queue);
+	   return queue;
+   }
+   private Point2D searchPoint(Node x,Point2D p) {
+	   Point2D chomp = x.p;
+	   Queue<Node> nq = new Queue<Node>();
+	   nq.enqueue(x.lb);
+	   nq.enqueue(x.lb);
+       while (!nq.isEmpty()) {
+           Node y = nq.dequeue();
+           if (y == null) continue;
+           if ( p.distanceSquaredTo(x.p) < p.distanceTo(chomp)) {
+        	   chomp = x.p;
+        	   // empty the queue 
+        	   while (!nq.isEmpty()) {
+        		   y = nq.dequeue();
+        	   }
+               nq.enqueue(y.lb);
+               nq.enqueue(y.rt);
+           } 
+       }
+
+       return chomp;
+   }
+   public Point2D nearest(Point2D p) {              // a nearest neighbor in the set to p; null if set is empty
+	   Point2D chomp = root.p;
+	   Queue<Node> nq = new Queue<Node>();
+	   nq.enqueue(root.lb);
+	   nq.enqueue(root.rt);
+       while (!nq.isEmpty()) {
+           Node y = nq.dequeue();
+           if (y == null) continue;
+           if ( p.distanceSquaredTo(y.p) < p.distanceTo(chomp)) {
+        	   chomp = y.p;
+        	   // empty the queue 
+        	   while (!nq.isEmpty()) {
+        		   y = nq.dequeue();
+        	   }
+               nq.enqueue(y.lb);
+               nq.enqueue(y.rt);
+           } 
+       }
+
+       return chomp;
+
+   } 
+   public static void main(String[] args) {
+	   KdTree pset = new KdTree();
+	   StdDraw.setPenColor(StdDraw.BLACK);
+	   StdDraw.setPenRadius(.01);
+//       for (int i = 0; i < 10; i++) {
+//           double x = StdRandom.uniform();
+//           double y = StdRandom.uniform();
+//           pset.insert(new Point2D(x, y) );
+//       }	   
+     
+	   pset.insert(new Point2D(0.7,0.2));
+	   pset.draw();
+	   pset.insert(new Point2D(0.5,0.4));
+	   pset.draw();
+	   pset.insert(new Point2D(0.2,0.3));
+	   pset.draw();
+	   pset.insert(new Point2D(0.4,0.7));
+	   pset.draw();
+	   pset.insert(new Point2D(0.9,0.6));
+	   pset.draw();
+   }   
+   }
 	   root = null;
    }
    public boolean isEmpty() {                        // is the set empty?
